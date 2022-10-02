@@ -1,0 +1,39 @@
+name: OVMF Build
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  build:
+    name: OVMF Build
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Install build Packages
+      run: sudo apt-get install -qq --no-install-recommends uuid-dev iasl nasm
+    - name: Checkout Source
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    - name: Setup BaseTools
+      run: |
+        make -C BaseTools
+        source edksetup.sh
+    - name: Configure Conf/target.txt, GCC5 (host gcc), X64 arch, release build, and OVMF for X64
+      run: |
+        sed -E -i \
+          -e "s/(^TOOL_CHAIN_TAG\s*=\s*)(\S*)/\1GCC5/" \
+          -e "s/(^TARGET_ARCH\s*=\s*)(\S*)/\1X64/" \
+          -e "s/(^TARGET\s*=\s*)(\S*)/\1RELEASE/" \
+          -e "s/(^ACTIVE_PLATFORM\s*=\s*)(\S*)/\1OvmfPkg\/OvmfPkgX64\.dsc/" \
+          Conf/target.txt
+    - name: Build
+      run: |
+        source edksetup.sh
+        build
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: OVMF-files
+        path: Build/OvmfX64/RELEASE_GCC5/FV/OVMF*.fd
