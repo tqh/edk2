@@ -1829,7 +1829,6 @@ EfiBootManagerBoot (
   EFI_DEVICE_PATH_PROTOCOL   *RamDiskDevicePath;
   VOID                       *FileBuffer;
   UINTN                      FileSize;
-  EFI_BOOT_LOGO_PROTOCOL     *BootLogo;
   EFI_EVENT                  LegacyBootEvent;
 
   if (BootOption == NULL) {
@@ -2061,16 +2060,6 @@ EfiBootManagerBoot (
   // Clear the Watchdog Timer after the image returns
   //
   gBS->SetWatchdogTimer (0x0000, 0x0000, 0x0000, NULL);
-
-  //
-  // Set Logo status invalid after trying one boot option
-  //
-  BootLogo = NULL;
-  Status   = gBS->LocateProtocol (&gEfiBootLogoProtocolGuid, NULL, (VOID **)&BootLogo);
-  if (!EFI_ERROR (Status) && (BootLogo != NULL)) {
-    Status = BootLogo->SetBootLogo (BootLogo, NULL, 0, 0, 0, 0);
-    ASSERT_EFI_ERROR (Status);
-  }
 
   //
   // Clear Boot Current

@@ -98,7 +98,6 @@
   gEfiBlockIoProtocolGuid                       ## SOMETIMES_CONSUMES
   gEfiFirmwareVolume2ProtocolGuid               ## SOMETIMES_CONSUMES
   gEfiDevicePathProtocolGuid                    ## SOMETIMES_CONSUMES
-  gEfiBootLogoProtocolGuid                      ## SOMETIMES_CONSUMES
   gEfiSimpleTextInputExProtocolGuid             ## SOMETIMES_CONSUMES
   gEdkiiVariablePolicyProtocolGuid              ## SOMETIMES_CONSUMES
   gEfiGraphicsOutputProtocolGuid                ## SOMETIMES_CONSUMES

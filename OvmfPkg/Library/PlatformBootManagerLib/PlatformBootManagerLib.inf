@@ -43,7 +43,6 @@
   DebugLib
   PcdLib
   UefiBootManagerLib
-  BootLogoLib
   DevicePathLib
   PciLib
   NvVarsFileLib

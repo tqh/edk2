@@ -1685,11 +1685,6 @@ PlatformBootManagerAfterConsole (
   ASSERT (BootMode == BOOT_WITH_FULL_CONFIGURATION);
 
   //
-  // Logo show
-  //
-  BootLogoEnableLogo ();
-
-  //
   // Set PCI Interrupt Line registers and ACPI SCI_EN
   //
   PciAcpiInitialization ();
@@ -1842,32 +1837,7 @@ PlatformBootManagerWaitCallback (
   UINT16  TimeoutRemain
   )
 {
-  EFI_GRAPHICS_OUTPUT_BLT_PIXEL_UNION  Black;
-  EFI_GRAPHICS_OUTPUT_BLT_PIXEL_UNION  White;
-  UINT16                               TimeoutInitial;
-
-  TimeoutInitial = PcdGet16 (PcdPlatformBootTimeOut);
-
-  //
-  // If PcdPlatformBootTimeOut is set to zero, then we consider
-  // that no progress update should be enacted (since we'd only
-  // ever display a one-shot progress of either 0% or 100%).
-  //
-  if (TimeoutInitial == 0) {
-    return;
-  }
-
-  Black.Raw = 0x00000000;
-  White.Raw = 0x00FFFFFF;
-
-  BootLogoUpdateProgress (
-    White.Pixel,
-    Black.Pixel,
-    L"Start boot option",
-    White.Pixel,
-    (TimeoutInitial - TimeoutRemain) * 100 / TimeoutInitial,
-    0
-    );
+	//XXX: Needs to block?
 }
 
 /**

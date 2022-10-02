@@ -994,9 +994,6 @@ UiEntry (
   IN BOOLEAN  ConnectAllHappened
   )
 {
-  EFI_STATUS              Status;
-  EFI_BOOT_LOGO_PROTOCOL  *BootLogo;
-
   //
   // Enter Setup page.
   //
@@ -1017,14 +1014,6 @@ UiEntry (
   // The boot option enumeration time is acceptable in Ui driver
   //
   EfiBootManagerRefreshAllBootOption ();
-
-  //
-  // Boot Logo is corrupted, report it using Boot Logo protocol.
-  //
-  Status = gBS->LocateProtocol (&gEfiBootLogoProtocolGuid, NULL, (VOID **)&BootLogo);
-  if (!EFI_ERROR (Status) && (BootLogo != NULL)) {
-    BootLogo->SetBootLogo (BootLogo, NULL, 0, 0, 0, 0);
-  }
 
   InitializeFrontPage ();
 
