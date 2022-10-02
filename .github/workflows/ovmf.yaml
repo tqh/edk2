@@ -19,19 +19,10 @@ jobs:
     - name: Setup BaseTools
       run: |
         make -C BaseTools
-        source edksetup.sh
-    - name: Configure Conf/target.txt, GCC5 (host gcc), X64 arch, release build, and OVMF for X64
-      run: |
-        sed -E -i \
-          -e "s/(^TOOL_CHAIN_TAG\s*=\s*)(\S*)/\1GCC5/" \
-          -e "s/(^TARGET_ARCH\s*=\s*)(\S*)/\1X64/" \
-          -e "s/(^TARGET\s*=\s*)(\S*)/\1RELEASE/" \
-          -e "s/(^ACTIVE_PLATFORM\s*=\s*)(\S*)/\1OvmfPkg\/OvmfPkgX64\.dsc/" \
-          Conf/target.txt
     - name: Build
       run: |
-        source edksetup.sh
-        build
+        source edksetup.sh BaseTools
+        build -a X64 -t GCC5 -b RELEASE -p OvmfPkg/OvmfPkgX64.dsc
     - name: Upload Artifacts
       uses: actions/upload-artifact@v3
       with:
