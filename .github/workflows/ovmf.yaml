@@ -2,7 +2,7 @@ name: OVMF Build
 
 on:
   push:
-    branches: [ master ]
+    branches: [ "*" ]
 
 jobs:
   build:
@@ -22,7 +22,10 @@ jobs:
     - name: Build
       run: |
         source edksetup.sh BaseTools
-        build -a X64 -t GCC5 -b RELEASE -p OvmfPkg/OvmfPkgX64.dsc
+        build -a X64 -t GCC5 -b RELEASE -p OvmfPkg/OvmfPkgX64.dsc \
+          -D FD_SIZE_2MB \
+          -D NETWORK_ALLOW_HTTP_CONNECTIONS=false \
+          -D NETWORK_ISCSI_ENABLE=false
     - name: Upload Artifacts
       uses: actions/upload-artifact@v3
       with:
