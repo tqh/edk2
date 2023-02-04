@@ -9,6 +9,7 @@
 # (C) Copyright 2016 - 2019 Hewlett Packard Enterprise Development LP<BR>
 # Copyright (c) 2017, AMD Incorporated. All rights reserved.<BR>
 # Copyright (c) Microsoft Corporation.<BR>
+# Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.<BR>
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 #
 ##
@@ -116,6 +117,10 @@
   ## @libraryclass  Provides interfaces about Ipmi submit generic commond.
   #
   IpmiLib|Include/Library/IpmiLib.h
+
+  ## @libraryclass  Provides interfaces to send/receive IPMI command.
+  #
+  IpmiCommandLib|Include/Library/IpmiCommandLib.h
 
   ## @libraryclass  Provides interfaces for platform to return root bridge information to PciHostBridgeDxe driver.
   #
@@ -917,7 +922,7 @@
   # @Prompt Enable process non-reset capsule image at runtime.
   gEfiMdeModulePkgTokenSpaceGuid.PcdSupportProcessCapsuleAtRuntime|FALSE|BOOLEAN|0x00010079
 
-[PcdsFeatureFlag.IA32, PcdsFeatureFlag.ARM, PcdsFeatureFlag.AARCH64]
+[PcdsFeatureFlag.IA32, PcdsFeatureFlag.ARM, PcdsFeatureFlag.AARCH64, PcdsFeatureFlag.LOONGARCH64]
   gEfiMdeModulePkgTokenSpaceGuid.PcdPciDegradeResourceForOptionRom|FALSE|BOOLEAN|0x0001003a
 
 [PcdsFeatureFlag.IA32, PcdsFeatureFlag.X64]
