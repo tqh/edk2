@@ -31,10 +31,47 @@ class UPLD_INFO_HEADER(LittleEndianStructure):
     def __init__(self):
         self.Identifier     =  b'PLDH'
         self.HeaderLength   = sizeof(UPLD_INFO_HEADER)
-        self.SpecRevision   = 0x0009
+        self.SpecRevision   = 0x0070
         self.Revision       = 0x0000010105
         self.ImageId        = b'UEFI'
         self.ProducerId     = b'INTEL'
+
+def GenSpecRevision (Argument):
+    try:
+        (MajorStr, MinorStr) = Argument.split('.')
+    except:
+        raise argparse.ArgumentTypeError ('{} is not a valid SpecRevision format (Major[8-bits].Minor[8-bits]).'.format (Argument))
+    #
+    # Spec Revision Bits 15 : 8 - Major Version. Bits 7 : 0 - Minor Version.
+    #
+    if len(MinorStr) > 0 and len(MinorStr) < 3:
+        try:
+            Minor = int(MinorStr, 16) if len(MinorStr) == 2 else (int(MinorStr, 16) << 4)
+        except:
+            raise argparse.ArgumentTypeError ('{} Minor version of SpecRevision is not a valid integer value.'.format (Argument))
+    else:
+        raise argparse.ArgumentTypeError ('{} is not a valid SpecRevision format (Major[8-bits].Minor[8-bits]).'.format (Argument))
+
+    if len(MajorStr) > 0 and len(MajorStr) < 3:
+        try:
+            Major = int(MajorStr, 16)
+        except:
+            raise argparse.ArgumentTypeError ('{} Major version of SpecRevision is not a valid integer value.'.format (Argument))
+    else:
+        raise argparse.ArgumentTypeError ('{} is not a valid SpecRevision format (Major[8-bits].Minor[8-bits]).'.format (Argument))
+
+    return int('0x{0:02x}{1:02x}'.format(Major, Minor), 0)
+
+def Validate32BitInteger (Argument):
+    try:
+        Value = int (Argument, 0)
+    except:
+        raise argparse.ArgumentTypeError ('{} is not a valid integer value.'.format (Argument))
+    if Value < 0:
+        raise argparse.ArgumentTypeError ('{} is a negative value.'.format (Argument))
+    if Value > 0xffffffff:
+        raise argparse.ArgumentTypeError ('{} is larger than 32-bits.'.format (Argument))
+    return Value
 
 def RunCommand(cmd):
     print(cmd)
@@ -65,6 +102,8 @@ def BuildUniversalPayload(Args, MacroList):
         ObjCopyFlag    = "elf32-i386"
         EntryOutputDir = os.path.join(BuildDir, "{}_{}".format (BuildTarget, ElfToolChain), os.path.normpath("IA32/UefiPayloadPkg/UefiPayloadEntry/UniversalPayloadEntry/DEBUG/UniversalPayloadEntry.dll"))
 
+    if Args.PreBuildUplBinary is not None:
+        EntryOutputDir = os.path.abspath(Args.PreBuildUplBinary)
     EntryModuleInf = os.path.normpath("UefiPayloadPkg/UefiPayloadEntry/UniversalPayloadEntry.inf")
     DscPath = os.path.normpath("UefiPayloadPkg/UefiPayloadPkg.dsc")
     DxeFvOutputDir = os.path.join(BuildDir, "{}_{}".format (BuildTarget, ToolChain), os.path.normpath("FV/DXEFV.Fv"))
@@ -95,55 +134,60 @@ def BuildUniversalPayload(Args, MacroList):
     #
     # Building DXE core and DXE drivers as DXEFV.
     #
-    BuildPayload = "build -p {} -b {} -a X64 -t {} -y {} {}".format (DscPath, BuildTarget, ToolChain, PayloadReportPath, Quiet)
-    BuildPayload += Pcds
-    BuildPayload += Defines
-    RunCommand(BuildPayload)
+    if Args.BuildEntryOnly == False:
+        BuildPayload = "build -p {} -b {} -a X64 -t {} -y {} {}".format (DscPath, BuildTarget, ToolChain, PayloadReportPath, Quiet)
+        BuildPayload += Pcds
+        BuildPayload += Defines
+        RunCommand(BuildPayload)
     #
     # Building Universal Payload entry.
     #
-    BuildModule = "build -p {} -b {} -a {} -m {} -t {} -y {} {}".format (DscPath, BuildTarget, BuildArch, EntryModuleInf, ElfToolChain, ModuleReportPath, Quiet)
-    BuildModule += Pcds
-    BuildModule += Defines
-    RunCommand(BuildModule)
-
+    if Args.PreBuildUplBinary is None:
+        BuildModule = "build -p {} -b {} -a {} -m {} -t {} -y {} {}".format (DscPath, BuildTarget, BuildArch, EntryModuleInf, ElfToolChain, ModuleReportPath, Quiet)
+        BuildModule += Pcds
+        BuildModule += Defines
+        RunCommand(BuildModule)
     #
     # Buid Universal Payload Information Section ".upld_info"
     #
     upld_info_hdr = UPLD_INFO_HEADER()
+    upld_info_hdr.SpecRevision = Args.SpecRevision
+    upld_info_hdr.Revision = Args.Revision
+    upld_info_hdr.ProducerId = Args.ProducerId.encode()[:16]
     upld_info_hdr.ImageId = Args.ImageId.encode()[:16]
     upld_info_hdr.Attribute |= 1 if BuildTarget == "DEBUG" else 0
     fp = open(UpldInfoFile, 'wb')
     fp.write(bytearray(upld_info_hdr))
     fp.close()
 
-    #
-    # Copy the DXEFV as a section in elf format Universal Payload entry.
-    #
-    remove_section = '"{}" -I {} -O {} --remove-section .upld_info --remove-section .upld.uefi_fv --remove-section .upld.bds_fv {}'.format (
-                       LlvmObjcopyPath,
-                       ObjCopyFlag,
-                       ObjCopyFlag,
-                       EntryOutputDir
-                       )
-    add_section    = '"{}" -I {} -O {} --add-section .upld_info={} --add-section .upld.uefi_fv={} --add-section .upld.bds_fv={} {}'.format (
-                       LlvmObjcopyPath,
-                       ObjCopyFlag,
-                       ObjCopyFlag,
-                       UpldInfoFile,
-                       DxeFvOutputDir,
-                       BdsFvOutputDir,
-                       EntryOutputDir
-                       )
-    set_section    = '"{}" -I {} -O {} --set-section-alignment .upld_info=4 --set-section-alignment .upld.uefi_fv=16 --set-section-alignment .upld.bds_fv=16 {}'.format (
-                       LlvmObjcopyPath,
-                       ObjCopyFlag,
-                       ObjCopyFlag,
-                       EntryOutputDir
-                       )
-    RunCommand(remove_section)
-    RunCommand(add_section)
-    RunCommand(set_section)
+    if Args.BuildEntryOnly == False:
+        #
+        # Copy the DXEFV as a section in elf format Universal Payload entry.
+        #
+        remove_section = '"{}" -I {} -O {} --remove-section .upld_info --remove-section .upld.uefi_fv --remove-section .upld.bds_fv {}'.format (
+                           LlvmObjcopyPath,
+                           ObjCopyFlag,
+                           ObjCopyFlag,
+                           EntryOutputDir
+                           )
+        add_section    = '"{}" -I {} -O {} --add-section .upld_info={} --add-section .upld.uefi_fv={} --add-section .upld.bds_fv={} {}'.format (
+                           LlvmObjcopyPath,
+                           ObjCopyFlag,
+                           ObjCopyFlag,
+                           UpldInfoFile,
+                           DxeFvOutputDir,
+                           BdsFvOutputDir,
+                           EntryOutputDir
+                           )
+        set_section    = '"{}" -I {} -O {} --set-section-alignment .upld_info=4 --set-section-alignment .upld.uefi_fv=16 --set-section-alignment .upld.bds_fv=16 {}'.format (
+                           LlvmObjcopyPath,
+                           ObjCopyFlag,
+                           ObjCopyFlag,
+                           EntryOutputDir
+                           )
+        RunCommand(remove_section)
+        RunCommand(add_section)
+        RunCommand(set_section)
 
     shutil.copy (EntryOutputDir, os.path.join(BuildDir, 'UniversalPayload.elf'))
 
@@ -156,6 +200,11 @@ def main():
     parser.add_argument('-i', '--ImageId', type=str, help='Specify payload ID (16 bytes maximal).', default ='UEFI')
     parser.add_argument('-q', '--Quiet', action='store_true', help='Disable all build messages except FATAL ERRORS.')
     parser.add_argument("-p", "--pcd", action="append")
+    parser.add_argument("-s", "--SpecRevision", type=GenSpecRevision, default ='0.7', help='Indicates compliance with a revision of this specification in the BCD format.')
+    parser.add_argument("-r", "--Revision", type=Validate32BitInteger, default ='0x0000010105', help='Revision of the Payload binary. Major.Minor.Revision.Build')
+    parser.add_argument("-o", "--ProducerId", default ='INTEL', help='A null-terminated OEM-supplied string that identifies the payload producer (16 bytes maximal).')
+    parser.add_argument("-e", "--BuildEntryOnly", action='store_true', help='Build UniversalPayload Entry file')
+    parser.add_argument("-pb", "--PreBuildUplBinary", default=None, help='Specify the UniversalPayload file')
     MacroList = {}
     args = parser.parse_args()
     if args.Macro is not None:
