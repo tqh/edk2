@@ -39,8 +39,17 @@
 #include <Register/Amd/Ghcb.h>
 
 #include <Guid/MicrocodePatchHob.h>
+#include "MpHandOff.h"
 
 #define WAKEUP_AP_SIGNAL  SIGNATURE_32 ('S', 'T', 'A', 'P')
+//
+// To trigger the start-up signal, BSP writes the specified
+// StartupSignalValue to the StartupSignalAddress of each processor.
+// This address is monitored by the APs, and as soon as they receive
+// the value that matches the MP_HAND_OFF_SIGNAL, they will wake up
+// and switch the context from PEI to DXE phase.
+//
+#define MP_HAND_OFF_SIGNAL  SIGNATURE_32 ('M', 'P', 'H', 'O')
 
 #define CPU_INIT_MP_LIB_HOB_GUID \
   { \
@@ -463,6 +472,15 @@ SaveCpuMpData (
 UINTN
 GetWakeupBuffer (
   IN UINTN  WakeupBufferSize
+  );
+
+/**
+  Switch Context for each AP.
+
+**/
+VOID
+SwitchApContext (
+  IN MP_HAND_OFF  *MpHandOff
   );
 
 /**
@@ -889,6 +907,16 @@ VOID
 SevSnpCreateAP (
   IN CPU_MP_DATA  *CpuMpData,
   IN INTN         ProcessorNumber
+  );
+
+/**
+  Get pointer to CPU MP Data structure from GUIDed HOB.
+
+  @param[in] CpuMpData  The pointer to CPU MP Data structure.
+**/
+VOID
+AmdSevUpdateCpuMpData (
+  IN CPU_MP_DATA  *CpuMpData
   );
 
 #endif

@@ -86,21 +86,6 @@ AddMemoryRangeHob (
 }
 
 /**
-  Configure MMU
-**/
-STATIC
-VOID
-InitMmu (
-  )
-{
-  //
-  // Set supervisor translation mode to Bare mode
-  //
-  RiscVSetSupervisorAddressTranslationRegister ((UINT64)SATP_MODE_OFF << 60);
-  DEBUG ((DEBUG_INFO, "%a: Set Supervisor address mode to bare-metal mode.\n", __FUNCTION__));
-}
-
-/**
   Publish system RAM and reserve memory regions.
 
 **/
@@ -156,21 +141,10 @@ GetNumCells (
 
 /** Mark reserved memory ranges in the EFI memory map
 
-  The M-mode firmware ranges should not be used by the
-  EDK2/OS. These ranges are passed via device tree using reserved
-  memory nodes. Parse the DT and mark those ranges as of
-  type EfiReservedMemoryType.
-
-  NOTE: Device Tree spec section 3.5.4 says reserved memory regions
-  without no-map property should be installed as EfiBootServicesData.
-  As per UEFI spec, memory of type EfiBootServicesData can be used
-  by the OS after ExitBootServices().
-  This is not an issue for DT since OS can parse the DT also along
-  with EFI memory map and avoid using these ranges. But with ACPI,
-  there is no such mechanisms possible.
-  Since EDK2 needs to support both DT and ACPI, we are deviating
-  from the DT spec and marking all reserved memory ranges as
-  EfiReservedMemoryType itself irrespective of no-map.
+ * As per DT spec v0.4 Section 3.5.4,
+ * "Reserved regions with the no-map property must be listed in the
+ * memory map with type EfiReservedMemoryType. All other reserved
+ * regions must be listed with type EfiBootServicesData."
 
   @param FdtPointer Pointer to FDT
 
@@ -243,11 +217,19 @@ AddReservedMemoryMap (
           Size
           ));
 
-        BuildMemoryAllocationHob (
-          Addr,
-          Size,
-          EfiReservedMemoryType
-          );
+        if (fdt_getprop (FdtPointer, SubNode, "no-map", &Len)) {
+          BuildMemoryAllocationHob (
+            Addr,
+            Size,
+            EfiReservedMemoryType
+            );
+        } else {
+          BuildMemoryAllocationHob (
+            Addr,
+            Size,
+            EfiBootServicesData
+            );
+        }
       }
     }
   }
@@ -276,13 +258,13 @@ MemoryPeimInitialization (
   GetFirmwareContextPointer (&FirmwareContext);
 
   if (FirmwareContext == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a: Firmware Context is NULL\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a: Firmware Context is NULL\n", __func__));
     return EFI_UNSUPPORTED;
   }
 
   FdtPointer = (VOID *)FirmwareContext->FlattenedDeviceTree;
   if (FdtPointer == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a: Invalid FDT pointer\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a: Invalid FDT pointer\n", __func__));
     return EFI_UNSUPPORTED;
   }
 
@@ -306,7 +288,7 @@ MemoryPeimInitialization (
         DEBUG ((
           DEBUG_INFO,
           "%a: System RAM @ 0x%lx - 0x%lx\n",
-          __FUNCTION__,
+          __func__,
           CurBase,
           CurBase + CurSize - 1
           ));
@@ -319,7 +301,7 @@ MemoryPeimInitialization (
         DEBUG ((
           DEBUG_ERROR,
           "%a: Failed to parse FDT memory node\n",
-          __FUNCTION__
+          __func__
           ));
       }
     }
@@ -327,7 +309,8 @@ MemoryPeimInitialization (
 
   AddReservedMemoryMap (FdtPointer);
 
-  InitMmu ();
+  /* Make sure SEC is booting with bare mode */
+  ASSERT ((RiscVGetSupervisorAddressTranslationRegister () & SATP64_MODE) == (SATP_MODE_OFF << SATP64_MODE_SHIFT));
 
   BuildMemoryTypeInformationHob ();
 

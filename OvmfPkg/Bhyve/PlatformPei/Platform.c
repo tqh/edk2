@@ -373,7 +373,7 @@ MiscInitialization (
       DEBUG ((
         DEBUG_ERROR,
         "%a: Unknown Host Bridge Device ID: 0x%04x\n",
-        __FUNCTION__,
+        __func__,
         mHostBridgeDevId
         ));
       ASSERT (FALSE);
@@ -491,35 +491,6 @@ DebugDumpCmos (
   }
 }
 
-VOID
-S3Verification (
-  VOID
-  )
-{
- #if defined (MDE_CPU_X64)
-  if (FeaturePcdGet (PcdSmmSmramRequire) && mS3Supported) {
-    DEBUG ((
-      DEBUG_ERROR,
-      "%a: S3Resume2Pei doesn't support X64 PEI + SMM yet.\n",
-      __FUNCTION__
-      ));
-    DEBUG ((
-      DEBUG_ERROR,
-      "%a: Please disable S3 on the QEMU command line (see the README),\n",
-      __FUNCTION__
-      ));
-    DEBUG ((
-      DEBUG_ERROR,
-      "%a: or build OVMF with \"OvmfPkgIa32X64.dsc\".\n",
-      __FUNCTION__
-      ));
-    ASSERT (FALSE);
-    CpuDeadLoop ();
-  }
-
- #endif
-}
-
 /**
   Fetch the number of boot CPUs from QEMU and expose it to UefiCpuPkg modules.
   Set the mMaxCpuCount variable.
@@ -558,7 +529,7 @@ MaxCpuCountInitialization (
   DEBUG ((
     DEBUG_INFO,
     "%a: QEMU reports %d processor(s)\n",
-    __FUNCTION__,
+    __func__,
     ProcessorCount
     ));
 }

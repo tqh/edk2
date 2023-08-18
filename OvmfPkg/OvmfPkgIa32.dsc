@@ -1,7 +1,7 @@
 ## @file
 #  EFI/Framework Open Virtual Machine Firmware (OVMF) platform
 #
-#  Copyright (c) 2006 - 2022, Intel Corporation. All rights reserved.<BR>
+#  Copyright (c) 2006 - 2023, Intel Corporation. All rights reserved.<BR>
 #  (C) Copyright 2016 Hewlett Packard Enterprise Development LP<BR>
 #  Copyright (c) Microsoft Corporation.
 #
@@ -78,6 +78,8 @@
 !endif
 !endif
 
+!include OvmfPkg/Include/Dsc/OvmfPkg.dsc.inc
+
 [BuildOptions]
   GCC:RELEASE_*_*_CC_FLAGS             = -DMDEPKG_NDEBUG
   INTEL:RELEASE_*_*_CC_FLAGS           = /D MDEPKG_NDEBUG
@@ -93,15 +95,6 @@
   MSFT:*_*_*_CC_FLAGS = /D DISABLE_NEW_DEPRECATED_INTERFACES
   INTEL:*_*_*_CC_FLAGS = /D DISABLE_NEW_DEPRECATED_INTERFACES
   GCC:*_*_*_CC_FLAGS = -D DISABLE_NEW_DEPRECATED_INTERFACES
-
-  #
-  # SECURE_BOOT_FEATURE_ENABLED
-  #
-!if $(SECURE_BOOT_ENABLE) == TRUE
-  MSFT:*_*_*_CC_FLAGS = /D SECURE_BOOT_FEATURE_ENABLED
-  INTEL:*_*_*_CC_FLAGS = /D SECURE_BOOT_FEATURE_ENABLED
-  GCC:*_*_*_CC_FLAGS = -D SECURE_BOOT_FEATURE_ENABLED
-!endif
 
 !include NetworkPkg/NetworkBuildOptions.dsc.inc
 
@@ -174,6 +167,7 @@
   SerialPortLib|PcAtChipsetPkg/Library/SerialIoLib/SerialIoLib.inf
   MtrrLib|UefiCpuPkg/Library/MtrrLib/MtrrLib.inf
   MicrocodeLib|UefiCpuPkg/Library/MicrocodeLib/MicrocodeLib.inf
+  CpuPageTableLib|UefiCpuPkg/Library/CpuPageTableLib/CpuPageTableLib.inf
   UefiLib|MdePkg/Library/UefiLib/UefiLib.inf
   UefiBootServicesTableLib|MdePkg/Library/UefiBootServicesTableLib/UefiBootServicesTableLib.inf
   UefiRuntimeServicesTableLib|MdePkg/Library/UefiRuntimeServicesTableLib/UefiRuntimeServicesTableLib.inf
@@ -379,6 +373,7 @@
   PciLib|OvmfPkg/Library/DxePciLibI440FxQ35/DxePciLibI440FxQ35.inf
 
 [LibraryClasses.common.DXE_DRIVER]
+  AcpiPlatformLib|OvmfPkg/Library/AcpiPlatformLib/DxeAcpiPlatformLib.inf
   PcdLib|MdePkg/Library/DxePcdLib/DxePcdLib.inf
   TimerLib|OvmfPkg/Library/AcpiTimerLib/DxeAcpiTimerLib.inf
   ResetSystemLib|OvmfPkg/Library/ResetSystemLib/DxeResetSystemLib.inf
@@ -484,6 +479,7 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdEnableVariableRuntimeCache|FALSE
 !endif
 !if $(SECURE_BOOT_ENABLE) == TRUE
+  gUefiOvmfPkgTokenSpaceGuid.PcdSecureBootSupported|TRUE
   gEfiMdeModulePkgTokenSpaceGuid.PcdRequireSelfSignedPk|TRUE
 !endif
 
@@ -589,6 +585,13 @@
 
   # Point to the MdeModulePkg/Application/UiApp/UiApp.inf
   gEfiMdeModulePkgTokenSpaceGuid.PcdBootManagerMenuFile|{ 0x21, 0xaa, 0x2c, 0x46, 0x14, 0x76, 0x03, 0x45, 0x83, 0x6e, 0x8a, 0xb6, 0xf4, 0x66, 0x23, 0x31 }
+  #
+  # INIT is now triggered before BIOS by ucode/hardware. In the OVMF
+  # environment, QEMU lacks a simulation for the INIT process.
+  # To address this, PcdFirstTimeWakeUpAPsBySipi set to FALSE to
+  # broadcast INIT-SIPI-SIPI for the first time.
+  #
+  gUefiCpuPkgTokenSpaceGuid.PcdFirstTimeWakeUpAPsBySipi|FALSE
 
 ################################################################################
 #
@@ -802,6 +805,7 @@
   OvmfPkg/VirtioBlkDxe/VirtioBlk.inf
   OvmfPkg/VirtioScsiDxe/VirtioScsi.inf
   OvmfPkg/VirtioRngDxe/VirtioRng.inf
+  OvmfPkg/VirtioSerialDxe/VirtioSerial.inf
 !if $(PVSCSI_ENABLE) == TRUE
   OvmfPkg/PvScsiDxe/PvScsiDxe.inf
 !endif
@@ -835,7 +839,7 @@
   OvmfPkg/VirtioFsDxe/VirtioFsDxe.inf
   MdeModulePkg/Bus/Scsi/ScsiBusDxe/ScsiBusDxe.inf
   MdeModulePkg/Bus/Scsi/ScsiDiskDxe/ScsiDiskDxe.inf
-  OvmfPkg/SataControllerDxe/SataControllerDxe.inf
+  MdeModulePkg/Bus/Pci/SataControllerDxe/SataControllerDxe.inf
   MdeModulePkg/Bus/Ata/AtaAtapiPassThru/AtaAtapiPassThru.inf
   MdeModulePkg/Bus/Ata/AtaBusDxe/AtaBusDxe.inf
   MdeModulePkg/Bus/Pci/NvmExpressDxe/NvmExpressDxe.inf
@@ -977,6 +981,7 @@
     <LibraryClasses>
       SmmCpuPlatformHookLib|OvmfPkg/Library/SmmCpuPlatformHookLibQemu/SmmCpuPlatformHookLibQemu.inf
       SmmCpuFeaturesLib|OvmfPkg/Library/SmmCpuFeaturesLib/SmmCpuFeaturesLib.inf
+      MmSaveStateLib|UefiCpuPkg/Library/MmSaveStateLib/AmdMmSaveStateLib.inf
   }
 
   #

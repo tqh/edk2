@@ -91,7 +91,7 @@ PlatformQemuUc32BaseInitialization (
       DEBUG_VERBOSE,
       "%a: rounded UC32 base from 0x%x up to 0x%x, for "
       "an UC32 size of 0x%x\n",
-      __FUNCTION__,
+      __func__,
       PlatformInfoHob->LowMemory,
       PlatformInfoHob->Uc32Base,
       PlatformInfoHob->Uc32Size
@@ -123,7 +123,7 @@ PlatformGetFirstNonAddressCB (
 
   Candidate = E820Entry->BaseAddr + E820Entry->Length;
   if (PlatformInfoHob->FirstNonAddress < Candidate) {
-    DEBUG ((DEBUG_INFO, "%a: FirstNonAddress=0x%Lx\n", __FUNCTION__, Candidate));
+    DEBUG ((DEBUG_INFO, "%a: FirstNonAddress=0x%Lx\n", __func__, Candidate));
     PlatformInfoHob->FirstNonAddress = Candidate;
   }
 }
@@ -151,7 +151,7 @@ PlatformGetLowMemoryCB (
   }
 
   if (PlatformInfoHob->LowMemory < Candidate) {
-    DEBUG ((DEBUG_INFO, "%a: LowMemory=0x%Lx\n", __FUNCTION__, Candidate));
+    DEBUG ((DEBUG_INFO, "%a: LowMemory=0x%Lx\n", __func__, Candidate));
     PlatformInfoHob->LowMemory = (UINT32)Candidate;
   }
 }
@@ -180,7 +180,7 @@ PlatformAddHobCB (
         Base = ALIGN_VALUE (Base, (UINT64)EFI_PAGE_SIZE);
         End  = End & ~(UINT64)EFI_PAGE_MASK;
         if (Base < End) {
-          DEBUG ((DEBUG_INFO, "%a: HighMemory [0x%Lx, 0x%Lx)\n", __FUNCTION__, Base, End));
+          DEBUG ((DEBUG_INFO, "%a: HighMemory [0x%Lx, 0x%Lx)\n", __func__, Base, End));
           PlatformAddMemoryRangeHob (Base, End);
         }
       }
@@ -188,13 +188,13 @@ PlatformAddHobCB (
       break;
     case EfiAcpiAddressRangeReserved:
       BuildResourceDescriptorHob (EFI_RESOURCE_MEMORY_RESERVED, 0, Base, End - Base);
-      DEBUG ((DEBUG_INFO, "%a: Reserved [0x%Lx, 0x%Lx)\n", __FUNCTION__, Base, End));
+      DEBUG ((DEBUG_INFO, "%a: Reserved [0x%Lx, 0x%Lx)\n", __func__, Base, End));
       break;
     default:
       DEBUG ((
         DEBUG_WARN,
         "%a: Type %u [0x%Lx, 0x%Lx) (NOT HANDLED)\n",
-        __FUNCTION__,
+        __func__,
         E820Entry->Type,
         Base,
         End
@@ -241,7 +241,7 @@ PlatformReservationConflictCB (
   DEBUG ((
     DEBUG_INFO,
     "%a: move mmio: 0x%Lx => %Lx\n",
-    __FUNCTION__,
+    __func__,
     PlatformInfoHob->PcdPciMmio64Base,
     NewBase
     ));
@@ -495,7 +495,7 @@ PlatformGetFirstNonAddress (
       DEBUG ((
         DEBUG_WARN,
         "%a: ignoring malformed 64-bit PCI host aperture size from fw_cfg\n",
-        __FUNCTION__
+        __func__
         ));
       break;
   }
@@ -505,7 +505,7 @@ PlatformGetFirstNonAddress (
       DEBUG ((
         DEBUG_INFO,
         "%a: disabling 64-bit PCI host aperture\n",
-        __FUNCTION__
+        __func__
         ));
     }
 
@@ -534,7 +534,7 @@ PlatformGetFirstNonAddress (
     DEBUG ((
       DEBUG_VERBOSE,
       "%a: HotPlugMemoryEnd=0x%Lx\n",
-      __FUNCTION__,
+      __func__,
       HotPlugMemoryEnd
       ));
 
@@ -638,7 +638,7 @@ PlatformAddressWidthFromCpuid (
   DEBUG ((
     DEBUG_INFO,
     "%a: Signature: '%a', PhysBits: %d, QemuQuirk: %a, Valid: %a\n",
-    __FUNCTION__,
+    __func__,
     Signature,
     PhysBits,
     QemuQuirk ? "On" : "Off",
@@ -646,20 +646,28 @@ PlatformAddressWidthFromCpuid (
     ));
 
   if (Valid) {
-    if (PhysBits > 47) {
+    if (PhysBits > 46) {
       /*
        * Avoid 5-level paging altogether for now, which limits
        * PhysBits to 48.  Also avoid using address bit 48, due to sign
        * extension we can't identity-map these addresses (and lots of
        * places in edk2 assume we have everything identity-mapped).
        * So the actual limit is 47.
+       *
+       * Also some older linux kernels apparently have problems handling
+       * phys-bits > 46 correctly, so use that as limit.
        */
-      DEBUG ((DEBUG_INFO, "%a: limit PhysBits to 47 (avoid 5-level paging)\n", __func__));
-      PhysBits = 47;
+      DEBUG ((DEBUG_INFO, "%a: limit PhysBits to 46 (avoid 5-level paging)\n", __func__));
+      PhysBits = 46;
     }
 
     if (!Page1GSupport && (PhysBits > 40)) {
       DEBUG ((DEBUG_INFO, "%a: limit PhysBits to 40 (no 1G pages available)\n", __func__));
+      PhysBits = 40;
+    }
+
+    if (!FixedPcdGetBool (PcdUse1GPageTable) && (PhysBits > 40)) {
+      DEBUG ((DEBUG_INFO, "%a: limit PhysBits to 40 (PcdUse1GPageTable is false)\n", __func__));
       PhysBits = 40;
     }
 
@@ -783,7 +791,7 @@ PlatformScanHostProvided64BitPciMmioEnd (
       DEBUG ((
         DEBUG_ERROR,
         "%a: ignoring malformed hardware information from fw_cfg\n",
-        __FUNCTION__
+        __func__
         ));
       *PciMmioAddressEnd = 0;
       return Status;
@@ -806,7 +814,7 @@ PlatformScanHostProvided64BitPciMmioEnd (
     DEBUG ((
       DEBUG_INFO,
       "%a: Pci64End=0x%Lx\n",
-      __FUNCTION__,
+      __func__,
       *PciMmioAddressEnd
       ));
 
@@ -942,7 +950,7 @@ PlatformQemuInitializeRam (
   MTRR_SETTINGS  MtrrSettings;
   EFI_STATUS     Status;
 
-  DEBUG ((DEBUG_INFO, "%a called\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a called\n", __func__));
 
   //
   // Determine total memory size available
